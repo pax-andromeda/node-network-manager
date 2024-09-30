@@ -32,5 +32,9 @@
   "bugs": {
     "url": "https://github.com/MahdadGhasemian/network-manager/issues"
   },
-  "homepage": "https://github.com/MahdadGhasemian/network-manager#readme"
+  "homepage": "https://github.com/MahdadGhasemian/network-manager#readme",
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "typescript": "^5.6.2"
+  }
 }
