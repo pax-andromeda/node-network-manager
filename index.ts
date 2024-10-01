@@ -2,7 +2,7 @@ import { networkInterfaces } from "os";
 import { spawn } from "child_process";
 
 // collect ip4 addresses using "os" module
-const getIPv4 = () => {
+export const getIPv4 = () => {
   type IPv4Entry = { address: string; netmask: string; mac: string };
   return new Promise<IPv4Entry[]>((resolve, reject) => {
     try {
@@ -122,7 +122,7 @@ const clib = <T = unknown>(args: string[]) =>
   });
 
 // activity monitor stream
-const activityMonitor = (stream) =>
+export const activityMonitor = (stream) =>
   new Promise((resolve, reject) => {
     try {
       const nmcli = spawn("nmcli", ["monitor"]);
@@ -139,25 +139,26 @@ const activityMonitor = (stream) =>
   });
 
 // hostname
-const getHostName = () => cli(["general", "hostname"]);
-const setHostName = (hostName: string) =>
+export const getHostName = () => cli(["general", "hostname"]);
+export const setHostName = (hostName: string) =>
   cli(["general", "hostname", String(hostName)]);
 // networking
-const enable = () => cli(["networking", "on"]);
-const disable = () => cli(["networking", "off"]);
-const getNetworkConnectivityState = (reChecking = false) =>
+export const enable = () => cli(["networking", "on"]);
+export const disable = () => cli(["networking", "off"]);
+export const getNetworkConnectivityState = (reChecking = false) =>
   cli(
     reChecking
       ? ["networking", "connectivity", "check"]
       : ["networking", "connectivity"]
   );
 // connections (profiles)
-const connectionUp = (profile) => cli(["connection", "up", String(profile)]);
-const connectionDown = (profile) =>
+export const connectionUp = (profile) =>
+  cli(["connection", "up", String(profile)]);
+export const connectionDown = (profile) =>
   cli(["connection", "down", String(profile)]);
-const connectionDelete = (profile) =>
+export const connectionDelete = (profile) =>
   cli(["connection", "delete", String(profile)]);
-const getConnectionProfilesList = (active = false) =>
+export const getConnectionProfilesList = (active = false) =>
   clib(
     active
       ? [
@@ -171,9 +172,9 @@ const getConnectionProfilesList = (active = false) =>
         ]
       : ["-m", "multiline", "connection", "show", "--order", "active:name"]
   );
-const changeDnsConnection = (profile, dns) =>
+export const changeDnsConnection = (profile, dns) =>
   cli(["connection", "modify", String(profile), "ipv4.dns", String(dns)]);
-const addEthernetConnection = (
+export const addEthernetConnection = (
   connection_name: string,
   interf = "enp0s3",
   ipv4: string,
@@ -195,7 +196,7 @@ const addEthernetConnection = (
     "gw4",
     gateway,
   ]);
-const addGsmConnection = (
+export const addGsmConnection = (
   connection_name: string,
   interf = "*",
   apn: string,
@@ -237,10 +238,11 @@ const addGsmConnection = (
   return cli(cmd);
 };
 // devices
-const deviceConnect = (device) => cli(["device", "connect", String(device)]);
-const deviceDisconnect = (device) =>
+export const deviceConnect = (device) =>
+  cli(["device", "connect", String(device)]);
+export const deviceDisconnect = (device) =>
   cli(["device", "disconnect", String(device)]);
-const deviceStatus = async () => {
+export const deviceStatus = async () => {
   const data = await clib(["device", "status"]);
   return Object.keys(data[0])
     .map((line) => {
@@ -259,7 +261,7 @@ const deviceStatus = async () => {
     })
     .filter((x) => !!x); // filter first line
 };
-const getDeviceInfoIPDetail = async (deviceName) => {
+export const getDeviceInfoIPDetail = async (deviceName) => {
   const statesMap = {
     10: "unmanaged",
     30: "disconnected",
@@ -283,7 +285,7 @@ const getDeviceInfoIPDetail = async (deviceName) => {
     };
   })[0];
 };
-const getAllDeviceInfoIPDetail = async () => {
+export const getAllDeviceInfoIPDetail = async () => {
   const statesMap = {
     10: "unmanaged",
     30: "disconnected",
@@ -309,10 +311,14 @@ const getAllDeviceInfoIPDetail = async () => {
 };
 
 // wifi
-const wifiEnable = () => cli(["radio", "wifi", "on"]);
-const wifiDisable = () => cli(["radio", "wifi", "off"]);
-const getWifiStatus = () => cli(["radio", "wifi"]);
-const wifiHotspot = async (ifname: string, ssid: string, password: string) =>
+export const wifiEnable = () => cli(["radio", "wifi", "on"]);
+export const wifiDisable = () => cli(["radio", "wifi", "off"]);
+export const getWifiStatus = () => cli(["radio", "wifi"]);
+export const wifiHotspot = async (
+  ifname: string,
+  ssid: string,
+  password: string
+) =>
   clib([
     "device",
     "wifi",
@@ -325,7 +331,7 @@ const wifiHotspot = async (ifname: string, ssid: string, password: string) =>
     password,
   ]);
 
-const wifiCredentials = async (ifname: string) => {
+export const wifiCredentials = async (ifname: string) => {
   if (!ifname) throw Error("ifname required!");
   const data = await clib([
     "device",
@@ -337,7 +343,7 @@ const wifiCredentials = async (ifname: string) => {
   return data[0];
 };
 
-interface WifiListItem {
+export interface WifiListItem {
   "IN-USE": string;
   BSSID: string;
   SSID: string;
@@ -349,7 +355,7 @@ interface WifiListItem {
   SECURITY: string;
 }
 
-const getWifiList = async (reScan = false) => {
+export const getWifiList = async (reScan = false) => {
   const data = await clib<WifiListItem>(
     reScan
       ? ["-m", "multiline", "device", "wifi", "list", "--rescan", "yes"]
@@ -360,7 +366,7 @@ const getWifiList = async (reScan = false) => {
   });
 };
 
-const wifiConnect = (ssid: string, password: string, hidden = false) => {
+export const wifiConnect = (ssid: string, password: string, hidden = false) => {
   if (!hidden) {
     return cli([
       "device",
@@ -382,39 +388,4 @@ const wifiConnect = (ssid: string, password: string, hidden = false) => {
       "yes",
     ]);
   }
-};
-
-// exports
-module.exports = {
-  getIPv4,
-  activityMonitor,
-  // hostname
-  getHostName,
-  setHostName,
-  // network
-  enable,
-  disable,
-  getNetworkConnectivityState,
-  // connection (profile)
-  connectionUp,
-  connectionDown,
-  connectionDelete,
-  getConnectionProfilesList,
-  changeDnsConnection,
-  addEthernetConnection,
-  addGsmConnection,
-  // device
-  deviceStatus,
-  deviceConnect,
-  deviceDisconnect,
-  getDeviceInfoIPDetail,
-  getAllDeviceInfoIPDetail,
-  // wifi
-  wifiEnable,
-  wifiDisable,
-  getWifiStatus,
-  wifiHotspot,
-  wifiCredentials,
-  getWifiList,
-  wifiConnect,
 };
