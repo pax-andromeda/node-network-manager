@@ -1,22 +1,25 @@
-const os = require("os");
-const { spawn } = require("child_process");
+import { networkInterfaces } from "os";
+import { spawn } from "child_process";
 
 // collect ip4 addresses using "os" module
-const getIPv4 = () =>
-  new Promise((resolve, reject) => {
+const getIPv4 = () => {
+  type IPv4Entry = { address: string; netmask: string; mac: string };
+  return new Promise<IPv4Entry[]>((resolve, reject) => {
     try {
-      const networkInterfaces = os.networkInterfaces();
-      let items = [];
-      for (const key in networkInterfaces) {
-        if (Object.hasOwnProperty.call(networkInterfaces, key)) {
-          const element = networkInterfaces[key];
-          for (const item of element) {
-            if (!item.internal && item.family === "IPv4")
-              items.push({
-                address: item.address,
-                netmask: item.netmask,
-                mac: item.mac,
-              });
+      const interfaces = networkInterfaces();
+      let items: IPv4Entry[] = [];
+      for (const key in interfaces) {
+        if (Object.hasOwnProperty.call(interfaces, key)) {
+          const element = interfaces[key];
+          if (element) {
+            for (const item of element) {
+              if (!item.internal && item.family === "IPv4")
+                items.push({
+                  address: item.address,
+                  netmask: item.netmask,
+                  mac: item.mac,
+                });
+            }
           }
         }
       }
@@ -25,15 +28,16 @@ const getIPv4 = () =>
       reject(error);
     }
   });
+};
 
 // stringToJson convertor
-const stringToJson = (stringData) => {
+const stringToJson = <T = unknown>(stringData: string): T[] => {
   const data = stringData
     .toString()
     .split("\n")
     .map((keyVal) => {
       const index = keyVal.indexOf(":");
-      const obj = {};
+      const obj: unknown = {};
       obj[keyVal.slice(0, index)] = keyVal.slice(index + 1).replace(/^ */, "");
       return obj;
     });
@@ -46,31 +50,31 @@ const stringToJson = (stringData) => {
     }
   }
 
-  let list = [];
+  let list: T[] = [];
   for (let index = 0; index < data.length; index += i) {
     let obj = {};
     data.slice(index, index + i).forEach((item) => {
       const key = Object.keys(item)[0];
       if (key) obj[key] = item[key];
     });
-    if (!!Object.keys(obj).length) list.push(obj);
+    if (!!Object.keys(obj).length) list.push(obj as T);
   }
 
   return list;
 };
 
 // nmcli request for single answer or without answer
-const cli = (args) =>
-  new Promise((resolve, reject) => {
+const cli = (args: string[]) =>
+  new Promise<string | number | null>((resolve, reject) => {
     let resolved = false;
     try {
       const nmcli = spawn("nmcli", args);
-      nmcli.stdout.on("data", (data) => {
+      nmcli.stdout.on("data", (data: string) => {
         if (resolved) return;
         resolved = true;
         resolve(data.toString().trim());
       });
-      nmcli.stderr.on("data", (data) => {
+      nmcli.stderr.on("data", (data: string) => {
         if (resolved) return;
         resolved = true;
         reject(data.toString().trim());
@@ -88,16 +92,16 @@ const cli = (args) =>
   });
 
 // nmcli request for multiline answer
-const clib = (args) =>
-  new Promise((resolve, reject) => {
+const clib = <T = unknown>(args: string[]) =>
+  new Promise<T[]>((resolve, reject) => {
     let resolved = false;
     try {
       const nmcli = spawn("nmcli", args);
-      const body = [];
-      nmcli.stdout.on("data", (data) => {
+      const body: string[] = [];
+      nmcli.stdout.on("data", (data: string) => {
         body.push(data);
       });
-      nmcli.stderr.on("data", (data) => {
+      nmcli.stderr.on("data", (data: string) => {
         if (resolved) return;
         resolved = true;
         reject(data.toString());
@@ -107,7 +111,7 @@ const clib = (args) =>
         resolved = true;
         try {
           if (code !== 0) return reject(code);
-          resolve(stringToJson(body.join("")));
+          resolve(stringToJson<T>(body.join("")));
         } catch (error) {
           reject(error);
         }
@@ -136,7 +140,7 @@ const activityMonitor = (stream) =>
 
 // hostname
 const getHostName = () => cli(["general", "hostname"]);
-const setHostName = (hostName) =>
+const setHostName = (hostName: string) =>
   cli(["general", "hostname", String(hostName)]);
 // networking
 const enable = () => cli(["networking", "on"]);
@@ -157,19 +161,24 @@ const getConnectionProfilesList = (active = false) =>
   clib(
     active
       ? [
-        "-m",
-        "multiline",
-        "connection",
-        "show",
-        "--active",
-        "--order",
-        "active:name",
-      ]
+          "-m",
+          "multiline",
+          "connection",
+          "show",
+          "--active",
+          "--order",
+          "active:name",
+        ]
       : ["-m", "multiline", "connection", "show", "--order", "active:name"]
   );
 const changeDnsConnection = (profile, dns) =>
-  cli(["connection", "modify", String(profile), "ipv4.dns", String(dns)])
-const addEthernetConnection = (connection_name, interface = 'enp0s3', ipv4, gateway) =>
+  cli(["connection", "modify", String(profile), "ipv4.dns", String(dns)]);
+const addEthernetConnection = (
+  connection_name: string,
+  interf = "enp0s3",
+  ipv4: string,
+  gateway: string
+) =>
   cli([
     "connection",
     "add",
@@ -178,15 +187,22 @@ const addEthernetConnection = (connection_name, interface = 'enp0s3', ipv4, gate
     "con-name",
     connection_name,
     "ifname",
-    interface,
+    interf,
     "ipv4.method",
     "manual",
     "ipv4.addresses",
     `${ipv4}/24`,
     "gw4",
-    gateway
+    gateway,
   ]);
-const addGsmConnection = (connection_name, interface = '*', apn, username, password, pin) => {
+const addGsmConnection = (
+  connection_name: string,
+  interf = "*",
+  apn: string,
+  username: string,
+  password: string,
+  pin: string
+) => {
   let cmd = [
     "connection",
     "add",
@@ -195,7 +211,7 @@ const addGsmConnection = (connection_name, interface = '*', apn, username, passw
     "con-name",
     connection_name,
     "ifname",
-    interface
+    interf,
   ];
 
   if (apn) {
@@ -233,12 +249,13 @@ const deviceStatus = async () => {
         .replaceAll(/\s{2,}/g, " ")
         .trim()
         .split(" ");
-      const ret = {};
-      ret.device = lines.shift();
-      ret.type = lines.shift();
-      ret.state = lines.shift();
-      ret.connection = lines.join(" ");
-      return ret;
+
+      return {
+        device: lines.shift(),
+        type: lines.shift(),
+        state: lines.shift(),
+        connection: lines.join(" "),
+      };
     })
     .filter((x) => !!x); // filter first line
 };
@@ -295,7 +312,7 @@ const getAllDeviceInfoIPDetail = async () => {
 const wifiEnable = () => cli(["radio", "wifi", "on"]);
 const wifiDisable = () => cli(["radio", "wifi", "off"]);
 const getWifiStatus = () => cli(["radio", "wifi"]);
-const wifiHotspot = async (ifname, ssid, password) =>
+const wifiHotspot = async (ifname: string, ssid: string, password: string) =>
   clib([
     "device",
     "wifi",
@@ -308,7 +325,7 @@ const wifiHotspot = async (ifname, ssid, password) =>
     password,
   ]);
 
-const wifiCredentials = async (ifname) => {
+const wifiCredentials = async (ifname: string) => {
   if (!ifname) throw Error("ifname required!");
   const data = await clib([
     "device",
@@ -320,20 +337,30 @@ const wifiCredentials = async (ifname) => {
   return data[0];
 };
 
+interface WifiListItem {
+  "IN-USE": string;
+  BSSID: string;
+  SSID: string;
+  MODE: string;
+  CHAN: string;
+  RATE: string;
+  SIGNAL: string;
+  BARS: string;
+  SECURITY: string;
+}
+
 const getWifiList = async (reScan = false) => {
-  const data = await clib(
+  const data = await clib<WifiListItem>(
     reScan
       ? ["-m", "multiline", "device", "wifi", "list", "--rescan", "yes"]
       : ["-m", "multiline", "device", "wifi", "list", "--rescan", "no"]
   );
   return data.map((el) => {
-    let o = Object.assign({}, el);
-    o.inUseBoolean = o["IN-USE"] === "*";
-    return o;
+    return { ...el, inUseBoolean: el["IN-USE"] === "*" };
   });
 };
 
-const wifiConnect = (ssid, password, hidden = false) => {
+const wifiConnect = (ssid: string, password: string, hidden = false) => {
   if (!hidden) {
     return cli([
       "device",
@@ -352,7 +379,7 @@ const wifiConnect = (ssid, password, hidden = false) => {
       "password",
       String(password),
       "hidden",
-      "yes"
+      "yes",
     ]);
   }
 };
@@ -389,5 +416,5 @@ module.exports = {
   wifiHotspot,
   wifiCredentials,
   getWifiList,
-  wifiConnect
+  wifiConnect,
 };

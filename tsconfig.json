@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "target": "es2019",
+    "target": "ES2021",
     "declaration": true,
     "outDir": "./dist"
   },
-  "include": ["src/**/*"]
+  "files": ["index.ts"]
 }
