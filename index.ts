@@ -1,6 +1,29 @@
 import { networkInterfaces } from "os";
 import { spawn } from "child_process";
 
+function mockInDev<
+  F extends (...args: unknown[]) => unknown,
+  T extends Awaited<ReturnType<F>>
+>(
+  originalFunction: F,
+  mockData: T extends Array<any> ? Partial<T[number]>[] : Partial<T>
+): F {
+  console.log(process.platform, process.env.NODE_ENV);
+  if (process.platform === "linux")
+    // || process.env.NODE_ENV !== "development")
+    return originalFunction;
+
+  async function artificiallyDelayedMock() {
+    if (process.env.NODE_ENV === "test") return mockData;
+
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(mockData), 1000);
+    });
+  }
+
+  return artificiallyDelayedMock as F;
+}
+
 // collect ip4 addresses using "os" module
 export const getIPv4 = () => {
   type IPv4Entry = { address: string; netmask: string; mac: string };
@@ -355,16 +378,23 @@ export interface WifiListItem {
   SECURITY: string;
 }
 
-export const getWifiList = async (reScan = false) => {
-  const data = await clib<WifiListItem>(
-    reScan
-      ? ["-m", "multiline", "device", "wifi", "list", "--rescan", "yes"]
-      : ["-m", "multiline", "device", "wifi", "list", "--rescan", "no"]
-  );
-  return data.map((el) => {
-    return { ...el, inUseBoolean: el["IN-USE"] === "*" };
-  });
-};
+export const getWifiList = mockInDev(
+  async (reScan = false) => {
+    const data = await clib<WifiListItem>(
+      reScan
+        ? ["-m", "multiline", "device", "wifi", "list", "--rescan", "yes"]
+        : ["-m", "multiline", "device", "wifi", "list", "--rescan", "no"]
+    );
+    return data.map((el) => {
+      return { ...el, inUseBoolean: el["IN-USE"] === "*" };
+    });
+  },
+  [
+    { SSID: "Insecure Network", SECURITY: "--", SIGNAL: "42" },
+    { SSID: "Better Network", SECURITY: "WEP", SIGNAL: "69" },
+    { SSID: "Best-WiFi", SECURITY: "WPA2", SIGNAL: "84" },
+  ]
+);
 
 export const wifiConnect = (ssid: string, password: string, hidden = false) => {
   if (!hidden) {
