@@ -8,8 +8,7 @@ function mockInDev<
   originalFunction: F,
   mockData: T extends Array<any> ? Partial<T[number]>[] : Partial<T>
 ): F {
-  if (process.platform === "linux")
-    // || process.env.NODE_ENV !== "development")
+  if (process.platform === "linux" || process.env.NODE_ENV === "production")
     return originalFunction;
 
   async function artificiallyDelayedMock() {
