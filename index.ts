@@ -87,15 +87,15 @@ const stringToJson = <T = unknown>(stringData: string): T[] => {
 };
 
 // nmcli request for single answer or without answer
-const cli = (args: string[]) =>
-  new Promise<string | number | null>((resolve, reject) => {
+const cli = <T = string>(args: string[]) =>
+  new Promise<T | number | null>((resolve, reject) => {
     let resolved = false;
     try {
       const nmcli = spawn("nmcli", args);
       nmcli.stdout.on("data", (data: string) => {
         if (resolved) return;
         resolved = true;
-        resolve(data.toString().trim());
+        resolve(data.toString().trim() as T);
       });
       nmcli.stderr.on("data", (data: string) => {
         if (resolved) return;
@@ -336,7 +336,12 @@ export const getAllDeviceInfoIPDetail = async () => {
 // wifi
 export const wifiEnable = () => cli(["radio", "wifi", "on"]);
 export const wifiDisable = () => cli(["radio", "wifi", "off"]);
-export const getWifiStatus = () => cli(["radio", "wifi"]);
+
+export const getWifiStatus = mockInDev(
+  () => cli<"enabled" | "disabled">(["radio", "wifi"]),
+  "enabled"
+);
+
 export const wifiHotspot = async (
   ifname: string,
   ssid: string,
