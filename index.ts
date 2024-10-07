@@ -8,7 +8,6 @@ function mockInDev<
   originalFunction: F,
   mockData: T extends Array<any> ? Partial<T[number]>[] : Partial<T>
 ): F {
-  console.log(process.platform, process.env.NODE_ENV);
   if (process.platform === "linux")
     // || process.env.NODE_ENV !== "development")
     return originalFunction;
