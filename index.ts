@@ -399,26 +399,29 @@ export const getWifiList = mockInDev(
   ]
 );
 
-export const wifiConnect = (ssid: string, password: string, hidden = false) => {
-  if (!hidden) {
-    return cli([
-      "device",
-      "wifi",
-      "connect",
-      String(ssid),
-      "password",
-      String(password),
-    ]);
-  } else {
-    return cli([
-      "device",
-      "wifi",
-      "connect",
-      String(ssid),
-      "password",
-      String(password),
-      "hidden",
-      "yes",
-    ]);
-  }
-};
+export const wifiConnect = mockInDev(
+  (ssid: string, password: string, hidden = false) => {
+    if (!hidden) {
+      return cli([
+        "device",
+        "wifi",
+        "connect",
+        String(ssid),
+        "password",
+        String(password),
+      ]);
+    } else {
+      return cli([
+        "device",
+        "wifi",
+        "connect",
+        String(ssid),
+        "password",
+        String(password),
+        "hidden",
+        "yes",
+      ]);
+    }
+  },
+  "ok"
+);
